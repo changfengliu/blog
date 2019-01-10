@@ -1,6 +1,7 @@
 module.exports = {
 	title: "我的博客",
 	description: '工程师改变世界',
+	base: '/blog/',
 	dest: './docs',
 	themeConfig: {
 		search: true,
