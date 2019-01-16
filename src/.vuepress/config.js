@@ -22,6 +22,7 @@ module.exports = {
 			}
     ],
     sidebar: [
+			'/hooks-and-vue.md',
 			'/old/css-tricks.md',
 			'/old/js-ticker.md',
 			'/old/js-array-sort.md',
