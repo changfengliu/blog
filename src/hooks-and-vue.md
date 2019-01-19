@@ -1,50 +1,55 @@
-# 理解React Hooks及在Vue中Hooks的使用
+# Hooks API 在 Vue 中的实现分析
 
-初次听到 React Hooks，是在其刚发布的那几天，网上铺天盖地的大量文章介绍它。看字面意思是 ‘React 钩子’，就想当然地理解应该是修改 React 组件生命周期的钩子吧。React 延伸的概念非常多，高阶组件、函数式组件、Render Props、Context、...，又来了一个新概念，使得前端开发越来越复杂，我心里这样想着。近两年一直用 Vue，觉得 React 的诸多特性，在 Vue 中也都有类似的解决方案，所以就没有立即去了解它。
+初次听到 React Hooks，是在其刚发布的那几天，网上铺天盖地的文章介绍它。看字面意思是 ‘React 钩子’，就想当然地理解应该是修改 React 组件的钩子吧。React 延伸的概念非常多，高阶组件、函数式、Render Props、Context、等等。又来了一个新概念，前端开发已经够复杂了，我心里这样想着。近两年一直用 Vue，觉得 React 的诸多特性，在 Vue 中也都有类似的解决方案，所以就没有立即去了解它。
 
-后来看到尤大在[Vue3.0 最近进展](https://www.bilibili.com/video/av36787459/)的视频也提到了 Hooks API，并写了一个在 [Vue 中使用 Hooks 的 POC](https://github.com/yyx990803/vue-hooks)。看来 React Hooks 还是挺重要的，于是马上找到 React 官方文档与发布会的视频 -- 又一轮的恶补。
+后来看到尤大在[Vue 3.0 最近进展](https://www.bilibili.com/video/av36787459/)的视频中也提到了 Hooks API，并写了一个在 [Vue 中使用 Hooks 的 POC](https://github.com/yyx990803/vue-hooks)。看来 Hooks 还是挺重要的，于是马上找到 React 官方文档与发布会的视频 --- 又一轮的恶补。
 
-这篇文章着重解释一下我对 Hooks API 的理解，及在 Vue 中的实现。
+看了相关资料，觉得 Hooks 的应用前景还是挺诱人的，解决了目前前端开发中的诸多痛点。不过 React Hooks 目前还在 alpha 阶段，不太完善，内置 Hooks 也不丰富。而 Vue 只有个 Hooks POC，Vue3.0 很可能会加上，但需要再等几个月。所以暂不建议在正式代码中使用。
 
-## Hooks 是什么
+本篇文章着重解释一下我对 Hooks 的理解，以及 Hooks API 在 Vue 中的源码实现。也说明一下 Hooks 是个中立的概念，可以在任何框架中使用，非 React 所独有 :)
 
-Hooks 跟 React 没有特别直接的关联，作用为一种逻辑的复用机制，是一个可以在任何框架内被使用的概念。
-
-我总结它的作用是：
-> 切入组件的生命周期，以更细的粒度，为组件装配功能。
-
-这样理解也符合 hooks 的定义，[wikipedia](https://en.wikipedia.org/wiki/Hooking)上关于 hooks 的定义是
-> hooking covers a range of techniques used to alter or augment the behavior of an operating system, of applications。
-
-即：hooks 可用于修改或增加应用程序的功能。
 
 ## Hooks解决了什么问题
 
-按照 Dan 的说法，Hooks 解决了以下几个问题：
-1. 代码复用
-2. 大组件
-3. 组件树层级很深
-4. 类组件不容易理解
+在开始之前，我们先复述一下 Hooks 会帮我们解决什么问题。
 
-其实这些问题是相关联的.
+按照 Dan 的说法，React 项目的开发中有以下几个痛点：
+1. 跨组件代码复用问题。
+2. 大组件，难以维护。
+3. 组件树层级很深。
+4. 类组件不容易理解。
 
-组件化的开发方式，我们将页面拆分成不同的组件，按照自上而下的数据流，层层嵌套。代码的最小颗粒是组件。如果某些组件太大，我们就继续拆分成更小的组件，然后在父组件中调用它!
+当然 Vue 项目也是一样，其实这些问题也是相关联的。
 
-这种方式一直用得也不错，但也有不少痛点:
+组件化的开发方式，我们将页面拆分成不同的组件，按自上而下的数据流，层层嵌套。代码结构的最小颗粒是组件。
 
-1. 有些组件的交互逻辑确实比较复杂，难以拆分，系统长期迭代下来，累积的代码量很大，难于维护。
+如果某些组件太大，我们就继续拆分成更小的组件，然后在父组件中调用它。
+如果多组件之间有不少通用逻辑，我们就用 mixin 或 构建组件的继承体系。
 
-2. 即便是把大组件拆分了，又很容易使组件嵌套层次很深。如有时候我们为了使代码更简洁一些，一个图标都会对应一个组件。这样造成了很深层级的组件树，增加系统复杂度不说，性能也可能会受影响。
+但是组件拆分，会使我们很容易不小心就把组件的层级搞得很深，增加系统复杂度不说，性能也可能受到影响。并且，有些组件的交互逻辑确实比较复杂，拆分不得，系统长期迭代下来，累积的代码量很大，难以维护。
 
-3. 不同的组件中，往往包含一些通用逻辑，很难剥离出来。我们惯用的做法是，拆出来一个 util.js 做为工具包，然后在不同组件中调用。这种方式是很好的，可以把业务无关的逻辑剥离出来，使业务组件代码更精简一些。但是，如果这些公用逻辑需要关联组件的本地状态，或者需要分散在组件不同的生命周期中，就搞不定了。这时候我们不得不妥协性地在多个组件中包含一些重复逻辑。
+跨组件逻辑复用更加棘手！mixin是一个双刃剑(参考：[mixin 是有害的](https://reactjs.org/blog/2016/07/13/mixins-considered-harmful.html))；组件继承也不可取，虽然在强类型的面向对象语言(如：Java/C#)中，继承用着很好，但在 JavaScript 中总感到力不从心，也使得代码晦涩难懂；抽取 util 包也是一个惯用的做法，但如果要抽取的公用逻辑需要关联组件的本地状态呢，如果相关联的公用逻辑需要分散在组件的不同生命周期中呢，就搞不定了！这时候，我们往往就妥协了 --- 大组件/重复逻辑产生了。
 
-> 为了解决代码复用的问题，出现了各种招式，其中常用的有 mixin，但每种方式都有各自的弊病，要么是增加了系统的复杂度，要么使代码更脆弱，要么是可读性不好，比如：[mixin 是有害的](https://reactjs.org/blog/2016/07/13/mixins-considered-harmful.html)。
-
-4. React/Vue组件的概念，还是继承了面向对象的思想。有时代码并不容易理解，特别是 this，我们经常需要把函数 bind 到某个上下文。我们知道 js 的基于静态作用域的，就是说从源码上看，就能够推断变量的作用域。但 this 是个例外，this可以认为是一个特殊的只读变量，基于动态作用域的，就是说 this 的值是由调用者决定的。同一个方法，用不同的方式调用，其 this 指向完全不一样。
+上文提到类组件的问题，虽然用面向对象的方式建模系统是很好的做法，但我个人觉得在 JavaScript 中，特别是在基于 React/Vue 组件的开发中，并不很合适，很容易出错。我们经常需要把函数 bind 到某个上下文，以确保 this 的正确指向。JavaScript 的语法过于灵活，我们知道 JavaScript 的基于静态作用域的，就是说从源码上看，就能够推断变量的作用域。但 this 是个例外，它是基于动态作用域的，就是说 this 的值是由调用者决定的。同一个方法，用不同的方式调用，其 this 指向完全不一样。感兴趣的同学，请参考：[详解this](http://dmitrysoshnikov.com/ecmascript/chapter-3-this/)。
 
 如何解决这些痛点呢 --- Hooks!
 
-老代码不需要重构，hooks是为前端工具箱中的一个，当我们碰到诸如以上的问题时，可以采用 hooks 更优雅的解决方案。
+
+## Hooks 是什么
+
+wikipedia 上关于 [hooks](https://en.wikipedia.org/wiki/Hooking) 的定义是：
+
+> The term hooking covers a range of techniques used to alter or augment the behavior of an operating system, of applications, or of other software components by intercepting function calls or messages or events passed between software components. Code that handles such intercepted function calls, events or messages is called a hook.
+
+翻译成中文大体含义是：
+
+Hooks 包含了一系列技术，用于改变或增强操作系统、应用程序、软件组件的行为。这些技术包括拦截软件运行过程中的函数调用、消息、事件。
+
+对应到 React/Vue 中，Hooks 是：可以改变或增强 React/Vue 组件功能的代码模块。
+
+React 中强调 Hooks 只能在函数式组件中使用。本质上函数式组件就是一个单纯的渲染函数，渲染数据来源于外部，组件本身无状态 --- 这个组件的状态、生命周期中需要执行的逻辑从那里来呢? --- 由 hooks 提供。
+
+因此可见，Hooks 使我们模块化开发的粒度更细了，更函数式了。组件的功能变成了由 Hooks 一点点地装配起来。
 
 
 ## Hooks API
@@ -299,43 +304,5 @@ Vue 中函数式组件不多见，这里是为了模拟 React 的函数式组件
 
 因此更直观地说明了，hooks使我们模块化的开发粒度更细了，更函数式了。组件的功能变成了由 hooks 一点点地装配起来。
 
-### 全局支持 hooks
-
-将hooks逻辑以vue插件的方式注入，所有vue组件全局生效。
-
-```javascript
-export function hooks(Vue) {
-  Vue.mixin({
-    beforeCreate() {
-      const { hooks, data } = this.$options
-      if (hooks) {
-        this._effectStore = {}
-        this._refsStore = {}
-        this._computedStore = {}
-        this.$options.data = function () {
-          const ret = data ? data.call(this) : {}
-          ret._state = {}
-          return ret
-        }
-      }
-    },
-    beforeMount() {
-      const { hooks, render } = this.$options
-      if (hooks && render) {
-        this.$options.render = function (h) {
-          callIndex = 0
-          currentInstance = this
-          isMounting = !this._vnode
-          const hookProps = hooks(this.$props)
-          Object.assign(this._self, hookProps)
-          const ret = render.call(this, h)
-          currentInstance = null
-          return ret
-        }
-      }
-    }
-  })
-}
-```
 
 完整代码及示例请参考：[POC of vue-hooks](https://github.com/yyx990803/vue-hooks)
