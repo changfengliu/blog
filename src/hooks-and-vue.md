@@ -41,48 +41,71 @@ wikipedia 上关于 [hooks](https://en.wikipedia.org/wiki/Hooking) 的定义是�
 
 > The term hooking covers a range of techniques used to alter or augment the behavior of an operating system, of applications, or of other software components by intercepting function calls or messages or events passed between software components. Code that handles such intercepted function calls, events or messages is called a hook.
 
-翻译成中文大体含义是：
+翻译成中文含义是：
 
 Hooks 包含了一系列技术，用于改变或增强操作系统、应用程序、软件组件的行为。这些技术通过拦截软件运行过程中的函数调用、消息、事件来实现。
 
-就是说通过 Hooks，我们能够后期改变或增强已有系统的运行时行为。对应到 React/Vue，Hooks 是可以改变或增强组件运行时行为的代码模块。
+就是说通过 Hooks，我们能够后期改变或增强已有系统的运行时行为。对应到 React/Vue，则 Hooks 是可以改变或增强组件运行时行为的代码模块。
 
-通过阅读 React Hooks 的技术文档，React 中强调 Hooks 只能在函数式组件中使用。函数式组件本质上是一个单纯的渲染函数，无状态，数据来源于外部。这样的话，如何给组件添加本地状态，以及各种生命周期相关的逻辑呢？答案是：通过 Hooks。
+通过阅读 React Hooks 的技术文档，React 中强调 Hooks 只能在函数式组件中使用。函数式组件本质上是一个单纯的渲染函数，无状态，数据来源于外部。那么如何给组件添加本地状态，以及各种生命周期相关的逻辑呢？答案是：通过 Hooks。
 
 React 团队希望未来 '函数式组件 + Hooks' 成为开发组件的主要方式，那么 Hooks 应该有能力侵入组件生命周期的每个环节。虽然目前 React 提供的 Hooks 还不够丰富，后续会逐渐完善。
 
-综上所述，我们发现，Hooks 可以使我们模块化开发的粒度更细，更函数式了。组件的功能变成了由 Hooks 一点点地装配起来。这样的特性，恰恰解决了上面提到的4个痛点：代码复用、大组件、组件树过深、类组件问题。
+综上所述，我们发现，Hooks 可以使我们模块化开发的粒度更细，更函数式。组件的功能变成了由 Hooks 一点点地装配起来。这样的特性，恰恰解决了上面提到的4个痛点：代码复用、大组件、组件树过深、类组件问题。
 
-> 本篇写的稍微理论化一点，关于 React Hooks 的背景及示例，请参考：[Introducing Hooks](https://reactjs.org/docs/hooks-intro.html)
+> 本篇稍微理论化一点，关于 React Hooks 的背景及示例，请参考：[Introducing Hooks](https://reactjs.org/docs/hooks-intro.html)
 
-要实现这样的 Hooks，React 提供了两个重要的内置 Hooks 规范:
+React 提供了两个重要的内置 Hooks :
 - useState -- 为组件添加本地响应式状态。
-- useEffect -- 为组件添加生命周期相关的副作用逻辑。
+- useEffect -- 为组件添加状态更新后，需要执行的副作用逻辑。
 
-还有其它一些组件特性相关的 Hooks: useContext、useReducer、useMemo、useRef等等，未来应该会出现更多的内置 Hooks。我们也可以基于这些内置的 Hooks，实现自己的自定义 Hooks。
+还有其它一些组件特性相关的 Hooks：useContext、useReducer、useMemo、useRef 等等。未来应该会出现更多的内置 Hooks。我们也可以基于这些内置 Hooks，实现自己的自定义 Hooks。
 
-对于 Vue ，除了 useState、useEffect、useRef与 React 一致外，还可以实现 useComputed、useMounted、useUpdated、useWatch等内置 Hooks，以便能够更细致地为组件组装行为。
+对于 Vue ，除了 useState、useEffect、useRef 与 React 一致外，还可以实现 useComputed、useMounted、useUpdated、useWatch 等内置 Hooks，以便能够更细致地为组件添加行为。
 
 
 ## Hooks API 的 Vue 实现
 
 这里解析一下[尤大的Hooks POC of Vue](https://github.com/yyx990803/vue-hooks) 的源码实现，以便加深对 Hooks 的理解。
 
-我们一般用单文件组件的方式开发，所以源码中提供了 withHooks 方法，使能够把一个函数式的 Vue 组件，支持 Hooks.
-
 ### withHooks
 
+我们知道 React Hooks 只能在函数式组件中使用，Vue 中也要这样定义。
 
-Vue 中函数式组件不多见，这里是为了模拟 React 的函数式组件。
+withHooks 用于包装一个 Vue 版的函数式组件，在这个函数式组件中，您可以使用 Hooks 相关的功能。
 
-
+如，withHooks 使用示例：
 ```javascript
-let currentInstance = null  // 单体，当前组件实例。
-let isMounting = false  // 当前组件实例是否将要挂载。
-let callIndex = 0 // 用于自动key序列。
+import {
+  withHooks,
+  useData,
+  useComputed
+} from "vue-hooks"
+
+const Foo = withHooks(h => {
+  const data = useData({
+    count: 0
+  })
+  const double = useComputed(() => data.count * 2)
+  return h('div', [
+    h('div', `count is ${data.count}`),
+    h('div', `double count is ${double}`),
+    h('button', { on: { click: () => {
+      data.count++
+    }}}, 'count++')
+  ])
+})
+```
+代码中 withHooks 包装了一个函数式组件(渲染函数)，函数中通过 Hooks 为组件添加了一个本地状态 data，及一个计算属性 double。
+注意：代码中的 useData 与 useState 类似，下文会解释。
+
+withHooks 实现细节：
+```javascript
+let currentInstance = null
+let isMounting = false
+let callIndex = 0
 
 function ensureCurrentInstance() {
-  // 钩子函数需要在组件实例运行时执行。
   if (!currentInstance) {
     throw new Error(
       `invalid hooks call: hooks can only be called in a function passed to withHooks.`
@@ -94,35 +117,41 @@ export function withHooks(render) {
   return {
     data() {
       return {
-        _state: {}  // 存储 hook state.
+        _state: {}
       }
     },
     created() {
-      // 存储 hooks 相关辅助变量。
       this._effectStore = {}
       this._refsStore = {}
       this._computedStore = {}
     },
     render(h) {
-      callIndex = 0 // 重置索引，以便根据调用次序匹配对应的 hooks.
-      currentInstance = this  // 当前组件实例
-      isMounting = !this._vnode // 标识组件的挂载状态。
-      const ret = render(h, this.$attrs, this.$props) // 渲染
+      callIndex = 0
+      currentInstance = this
+      isMounting = !this._vnode
+      const ret = render(h, this.$attrs, this.$props)
       currentInstance = null
       return ret
     }
   }
 }
 ```
-需要注意的是：
-1. callIndex，每次渲染，都会重置为0，是为了根据调用次序匹配对应的 hooks，也限制了 Hooks 只能在顶级代码中调用。
-2. currentInstance 用于确保，Hooks只能在纯组件中使用。
-3. isMounting 标识组件的挂载状态
+代码中：
+
+withHooks 为组件添加了一个私有本地状态 \_state，用于存储 useState/useData 所关联的状态值。
+
+在 created 中，为组件注入了一些支持 Hooks 所需要的变量。
+
+重点是代码中的 render 函数：
+
+- callIndex，为 Hooks 相关的存储对象提供 key。这里每次渲染，都重置为 0，是为了能够根据调用次序匹配对应的 Hooks，这样处理也限制了 Hooks 只能在顶级代码中调用。
+- currentInstance，结合 ensureCurrentInstance 函数，用于确保 Hooks 只能在函数式组件中使用。
+- isMounting，用于标识组件的挂载状态
 
 
 ### useState
 
-可以为组件添加一个响应式的本地状态，及该状态相关的更新器。
+useState 用于为组件添加一个响应式的本地状态，及该状态相关的更新器。
 
 方法签名为：
 > const [state, setState] = useState(initialState);
@@ -130,7 +159,21 @@ export function withHooks(render) {
 setState 用于更新状态：
 > setState(newState);
 
-Vue 中实现 useState:
+如，useState 使用示例：
+```javascript
+import { withHooks, useState } from "vue-hooks"
+const Foo = withHooks(h => {
+  const [count, setCount] = useState(0)
+  return h("div", [
+    h("span", `count is: ${count}`),
+    h("button", { on: { click: () => setCount(count + 1) } }, "+" )
+  ])
+})
+```
+代码中，通过 useState 为组件添加了一个本地状态 count 与更新状态值用的函数 setCount。
+
+
+useState 实现细节:
 ```javascript
 export function useState(initial) {
   ensureCurrentInstance()
@@ -152,19 +195,70 @@ export function useState(initial) {
 以上代码很清晰地描述了 useState 是在组件中创建了一个本地的响应式状态，并生成了一个状态更新器。
 
 需要注意的是：
-1. 函数 ensureCurrentInstance 是为了确保 useState 必须在 render 中执行，也就是限制了必须在函数式组件中执行。
-2. 以 callIndex 生成的自增id作为存储状态值的key。说明 useState 需要依赖第一次渲染时的调用顺序来匹配过去的 state（每次渲染 callIndex 为重置为0）。这也限制了 useState 必须在顶层代码中使用。
-3. 其它 hooks 也必须遵循以上两点。
+- 函数 ensureCurrentInstance 是为了确保 useState 必须在 render 中执行，也就是限制了必须在函数式组件中执行。
+- 以 callIndex 生成的自增 id 作为存储状态值的 key。说明 useState 需要依赖第一次渲染时的调用顺序来匹配过去的 state（每次渲染 callIndex 需要重置为0）。这也限制了 useState 必须在顶层代码中使用。
+- 其它 hooks 也必须遵循以上两点。
 
 
 ### useEffect
 
-useEffect 是为了在组件的生命周期中，执行一些带有副作用的逻辑。
+useEffect 用于添加组件状态更新后，需要执行一些副作用逻辑。
 
-方法签名：
-> void useEffect(rawEffect, deps);
+#### 方法签名：
+> void useEffect(rawEffect, deps)
 
-Vue 中实现 useEffect:
+useEffect 指定的副作用逻辑，会在组件挂载后执行一次、在每次组件渲染后根据指定的依赖有选择地执行、并在组件卸载时执行清理逻辑(如果指定了的话)。
+
+#### 调用示例 1：
+```javascript
+import { withHooks, useState, useEffect } from "vue-hooks"
+
+const Foo = withHooks(h => {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    document.title = "count is " + count
+  })
+  return h("div", [
+    h("span", `count is: ${count}`),
+    h("button", { on: { click: () => setCount(count + 1) } }, "+" )
+  ])
+})
+```
+代码中，通过 useEffect 使每当 count 的状态值变化时，都会重置 document.title。
+
+注意：这里没有指定 useEffect 的第二个参数 deps，表示只要组件重新渲染都会执行 useEffect 指定的逻辑，不限制必须是 count 变化时。useEffect 详细的参数说明，请参考：[Using the Effect Hook](https://reactjs.org/docs/hooks-effect.html)
+
+#### 调用示例 2：
+```javascript
+import { withHooks, useState, useEffect } from "vue-hooks"
+
+const Foo = withHooks(h => {
+  const [width, setWidth] = useState(window.innerWidth)
+  const handleResize = () => {
+    setWidth(window.innerWidth)
+  };
+  useEffect(() => {
+    window.addEventListener("resize", handleResize)
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [])
+
+  return h("div", [
+    h("div", `window width is: ${width}`)
+  ])
+})
+```
+代码中，通过 useEffect 控制在窗口改变时重新获取其宽度。
+
+useEffect 逻辑的返回值，如果是函数的话，则定义其为清理逻辑。清理逻辑会在组件需要重新执行 useEffect 逻辑之前，或组件被销毁时执行。
+
+这里在 useEffect 逻辑中，为 window 对象添加了 resize 事件，那么就需要在组件销毁时或需要重新执行该副作用逻辑时，先把 resize 事件注销掉，以避免不必要的事件处理。
+
+另外，需要注意，这里 useEffect 的第二个参数的值是 []，表明无依赖项，只在组件创建后执行一次，这样处理也符合这里的业务场景。
+
+
+#### useEffect 实现细节:
 
 ```javascript
 export function useEffect(rawEffect, deps) {
@@ -215,25 +309,32 @@ export function useEffect(rawEffect, deps) {
   }
 }
 ```
-可以看到 useEffect 所指定的副作用逻辑，会在组件的 mounted、updated、destroyed 三个时期执行。执行的细节由 deps 控制。
+可以看到 useEffect 所指定的副作用逻辑，涉及到了组件的三个生命周期：mounted、updated、destroyed。
 
-需要注意：
-1. 如果 deps 为 null/undefined，则副作用逻辑在每次渲染都会执行。
-2. 如果 deps 指定了依赖的状态，则相应状态改变时，会执行副作用逻辑。
-3. 如果 deps 指定为 []，则副作用逻辑仅会在 mounted 时执行。
-4. 每次需要执行副作用逻辑时，都会先执行清理逻辑 -- rawEffect 的返回值。
-5. 组件 destroyed 时，会执行清理逻辑。
+通过参数，可以为 useEffect 指定 3 种信息：
+- rawEffect - 副作用逻辑内容。
+- 清理逻辑 - 通过 rawEffect 的返回值定义。
+- 依赖 - 定义何时需要重复执行副作用逻辑。
 
+副作用逻辑的执行细节由 deps 控制：
+- mounted 时，固定地执行一次。
+- 如果 deps 未指定，则每次 updated 后都执行一次。
+- 如果 deps 为空数组，则 updated 后不执行。
+- 如果 deps 指定了依赖项，则当相应的依赖项的值改变时，执行一次。
+
+清理逻辑，会在 2 种情况下执行：
+- rawEffect 需要重复执行之前，清理上次运行所带来的副作用。
+- 组件销毁时。
 
 
 ### useRef
 
 相当于为组件存储一个本地变量 --- 非状态。
 
-方法签名：
+#### 方法签名：
 > const refContainer = useRef(initialValue)
 
-Vue 中 useRef 的实现：
+#### useRef 实现细节：
 
 ```javascript
 export function useRef(initial) {
@@ -243,8 +344,7 @@ export function useRef(initial) {
   return isMounting ?
     (refs[id] = {
       current: initial
-    })
-    :
+    }) :
     refs[id]
 }
 ```
@@ -254,7 +354,7 @@ export function useRef(initial) {
 
 添加需要在 mounted 事件中执行的逻辑。
 
-Vue 中 useMounted 的实现：
+useMounted 实现细节：
 ```javascript
 export function useMounted(fn) {
   useEffect(fn, [])
@@ -327,19 +427,14 @@ export function useComputed(getter) {
     store[id] = getter()
     currentInstance.$watch(
       getter,
-      val => {
-        store[id] = val
-      },
-      {
-        sync: true
-      }
+      val => { store[id] = val },
+      { sync: true }
     )
   }
   return store[id]
 }
 ```
 本质上也是通过组件实例的 $watch 实现。
-
 
 
 ### 完整代码及示例
@@ -349,7 +444,7 @@ export function useComputed(getter) {
 
 ## 结论
 
-1. 由 Vue 版的 Hooks，我们看到 Hooks 有能力切入组件生命周期的各个环境。
+1. Hooks 有能力切入组件生命周期的各个环节。
 2. 以 纯组件 + Hooks 的方式开发组件，我们基本上告别 this 了。我们由面向对象编程转到了函数式编程。
 3. 通过 Hooks，使我们能够根据业务逻辑的相关性组织代码模块，摆脱了组件类型格式的限制。
 
