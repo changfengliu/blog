@@ -13,7 +13,7 @@
 
 在开始之前，我们先复述一下 Hooks 会帮我们解决什么问题。
 
-按照 Dan 的说法，React 项目的开发中遇到了以下几个痛点：
+按照 [Dan 的说法](https://reactjs.org/docs/hooks-intro.html)，React 项目的开发中遇到了以下几个痛点：
 1. 跨组件代码，难以复用。
 2. 大组件，难以维护。
 3. 组件树层级，往往嵌套很深。
@@ -30,9 +30,9 @@
 
 跨组件逻辑复用更加棘手！mixin 是一个双刃剑(参考: [mixin 是有害的](https://reactjs.org/blog/2016/07/13/mixins-considered-harmful.html))；组件继承也不可取，虽然在强类型的面向对象语言(如:Java/C#)中，继承用着很好，但在 JavaScript 中总感到力不从心，也使得代码晦涩难懂；抽取 util 包也是一个惯用的做法，但，如果要抽取的公用逻辑需关联组件的本地状态呢，如果相关联的公用逻辑需要分散在组件的不同生命周期中呢，就搞不定了！这时候，我们往往就妥协了 -- 大组件/重复逻辑产生了。
 
-类组件也让人爱恨交织，一直以来我们也提倡用面向对象的方式抽象代码结构，在没有更好的解决方案之前，确实是个不错的选择。但我个人觉得在 JavaScript 中，特别是在基于 React/Vue 组件体系的开发中，并不很合适。我们经常需要奇技淫巧的手段使 JavaScript 类型能够支持 super、私有成员，并小心处理函数中 this 的指向。基于 JavaScript 的灵活性与强大的表现力，总能够找到正确书写代码的方式。问题是，这样的代码怎么维护呢，晦涩难懂、雷区遍布。单说 this，我们知道 JavaScript 的基于静态作用域的，即从源码上看，就能够推断变量的作用域，但 this 却是个例外，它是基于动态作用域的，就是说 this 的值是由调用者决定的。同一个方法，用不同的方式调用，其 this 指向完全不一样，使得我们不得不大量使用 bind，以保证 this 的指向。
+类组件也让人爱恨交织，一直以来我们也提倡用面向对象的方式抽象代码结构，在没有更好的解决方案之前，确实是个不错的选择。但我个人觉得在 JavaScript 中，特别是在基于 React/Vue 组件体系的开发中，并不很合适。我们经常需要奇技淫巧的手段使 JavaScript 类型能够支持 super、私有成员，并小心地处理函数中 this 的指向。得益于 JavaScript 的灵活性与强大的表现力，总能够找到正确书写代码的方式。问题是，这样的代码怎么维护呢，我们希望代码简洁明了，符合惯例写法，而非晦涩难懂、雷区遍布。单说 this，我们知道 JavaScript 的基于静态作用域的，即从源码上看，就能够推断变量的作用域，但 this 却是个例外，它是基于动态作用域的，就是说 this 的值是由调用者决定的。同一个方法，用不同的方式调用，其 this 指向完全不一样，使得我们不得不大量使用 bind，以保证 this 的指向。
 
-> 关于 JavaScript 中的 this，感兴趣的同学，可参考：[详解 this](http://dmitrysoshnikov.com/ecmascript/chapter-3-this/)。
+> 关于 JavaScript 中的 this 用法，感兴趣的同学，可参考：[详解 this](http://dmitrysoshnikov.com/ecmascript/chapter-3-this/)。
 
 如何解决这些痛点呢 -- Hooks !
 
@@ -45,23 +45,21 @@ wikipedia 上关于 [hooks](https://en.wikipedia.org/wiki/Hooking) 的定义是�
 
 翻译成中文含义是：Hooks 包含了一系列技术，用于改变或增强操作系统、应用程序、软件组件的行为。这些技术通过拦截软件运行过程中的函数调用、消息、事件来实现。
 
-就是说通过 Hooks，我们能够后期改变或增强已有系统的运行时行为。那么，对应到 React/Vue，则 Hooks 是可以改变或增强组件运行时行为的代码模块。
+就是说通过 Hooks，我们能够后期改变或增强已有系统的运行时行为。那么，对应到 React/Vue 组件系统，则 Hooks 是可以改变或增强组件运行时行为的代码模块。
 
-通过阅读 React Hooks 的技术文档，React 中强调 Hooks 只能在函数式组件中使用。函数式组件本质上是一个单纯的渲染函数，无状态，数据来源于外部。那么如何给组件添加本地状态，以及各种生命周期相关的业务逻辑呢？答案是：通过 Hooks。
-
-React 团队希望未来「函数式组件 + Hooks」成为开发组件的主要方式，那么 Hooks 应该有能力侵入组件生命周期的每个环节，以便为组件添加状态与行为。虽然目前 React 提供的 Hooks 还不够丰富，后续会逐渐完善。
-
-综上所述，我们发现，Hooks 可以使我们模块化开发的粒度更细，更函数式。组件的功能变成了由 Hooks 一点点地装配起来。这样的特性，恰恰解决了上面提到的4个痛点：代码复用、大组件、组件树过深、类组件问题。
-
-> 本篇稍微理论化了一点，关于 React Hooks 的背景及示例，请参考：[Introducing Hooks](https://reactjs.org/docs/hooks-intro.html)
-
-React 提供了两个重要的内置 Hooks :
+通过阅读 React Hooks 的技术文档，的确如此。React 提供了两个重要的内置 Hooks :
 - useState -- 为组件添加本地响应式状态。
 - useEffect -- 为组件添加状态更新后，需要执行的副作用逻辑。
 
-还有其它一些组件特性相关的内置 Hooks：useContext、useReducer、useMemo、useRef 等等。未来应该会出现更多的内置 Hooks。我们也可以基于这些内置 Hooks，实现自定义 Hooks。
+React 还提供了其它一些，组件特性相关的内置 Hooks，如 useContext、useReducer、useMemo、useRef 等等。未来应该会出现更多的内置 Hooks，切入组件运行时的方方面面。我们也可以基于这些内置 Hooks，实现自定义 Hooks。
 
-对于 Vue ，除了 useState、useEffect、useRef 与 React 一致外，还可以实现 useComputed、useMounted、useUpdated、useWatch 等内置 Hooks，以便能够更细致地为组件添加功能。
+React 中强调 Hooks 只能在函数式组件中使用。函数式组件本质上是一个单纯的渲染函数，无状态、数据来源于外部。那么如何给组件添加本地状态，以及各种生命周期相关的业务逻辑呢？答案是：通过 Hooks。React 团队希望未来「函数式组件 + Hooks」成为开发组件的主要方式，那么 Hooks 应该有能力侵入组件生命周期的每个环节，以便为组件添加状态与行为。虽然目前 React 提供的 Hooks 还不够丰富，后续会逐渐完善。
+
+综上所述，我们发现，Hooks 可以使我们模块化开发的粒度更细，更函数式。组件的功能变成了由 Hooks 一点点地装配起来。这样的特性，也解决了上面提到的4个痛点：代码复用、大组件、组件树过深、类组件问题。
+
+> 关于 React Hooks 的背景及诸多示例，请参考：[Introducing Hooks](https://reactjs.org/docs/hooks-intro.html)
+
+对于 Vue ，除了 useState、useEffect、useRef 与 React Hooks API 一致外，还可以实现 useComputed、useMounted、useUpdated、useWatch 等内置 Hooks，以便能够更细致地为组件添加功能。
 
 
 ## Hooks API 的 Vue 实现
@@ -72,9 +70,9 @@ React 提供了两个重要的内置 Hooks :
 
 我们知道 React Hooks 只能在函数式组件中使用，Vue 中也要这样定义。
 
-withHooks 用于包装一个 Vue 版的函数式组件，在这个函数式组件中，您可以使用 Hooks 相关的功能。
+withHooks 用于包装一个 Vue 版的「函数式组件」，在这个函数式组件中，您可以使用 Hooks API。
 
-如，withHooks 使用示例：
+**withHooks 使用示例：**
 ```javascript
 import { withHooks, useData, useComputed } from "vue-hooks"
 
@@ -92,7 +90,7 @@ const Foo = withHooks(h => {
   ])
 })
 ```
-代码中 withHooks 包装了一个函数式组件(渲染函数)，函数中通过 Hooks 为组件添加了一个本地状态 data，及一个计算属性 double。
+代码中 withHooks 包装了一个函数式组件(渲染函数)，通过 Hooks 为组件添加了一个本地状态 data，及一个计算属性 double。
 
 注意：代码中的 useData 与 useState 类似，下文会解释。
 
@@ -135,13 +133,13 @@ export function withHooks(render) {
 ```
 代码中：
 
-withHooks 为组件添加了一个私有本地状态 \_state，用于存储 useState/useData 所关联的状态值。
+withHooks 为组件添加了一个私有本地状态 \_state，用于存储 useState、useData 所关联的状态值。
 
-在 created 中，为组件注入了一些支持 Hooks 所需要的存储类对象。
+在 created 中，为组件注入了一些支持 Hooks ( useEffect、useRef、useComputed ) 所需要的存储类对象。
 
 重点是代码中的 render 函数：
 
-- callIndex，为 Hooks 相关的存储对象提供 key。这里每次渲染，都重置为 0，是为了能够根据调用次序匹配对应的 Hooks，这样处理也限制了 Hooks 只能在顶级代码中调用。
+- callIndex，为 Hooks 相关的存储对象提供 key。这里每次渲染，都重置为 0，是为了能够根据调用次序匹配对应的 Hooks。这样处理也限制了 Hooks 只能在顶级代码中调用。
 - currentInstance，结合 ensureCurrentInstance 函数，用于确保 Hooks 只能在函数式组件中使用。
 - isMounting，用于标识组件的挂载状态
 
@@ -156,7 +154,7 @@ useState 用于为组件添加一个响应式的本地状态，及该状态相�
 setState 用于更新状态：
 > setState(newState);
 
-如，useState 使用示例：
+**useState 使用示例：**
 ```javascript
 import { withHooks, useState } from "vue-hooks"
 const Foo = withHooks(h => {
@@ -168,7 +166,6 @@ const Foo = withHooks(h => {
 })
 ```
 代码中，通过 useState 为组件添加了一个本地状态 count 与更新状态值用的函数 setCount。
-
 
 **useState 实现细节:**
 ```javascript
@@ -189,17 +186,17 @@ export function useState(initial) {
   return [state[id], updater]
 }
 ```
-以上代码很清晰地描述了 useState 是在组件中创建了一个本地的响应式状态，并生成了一个状态更新器。
+以上代码，很清晰地描述了 useState 是在组件中创建了一个本地响应式状态，并生成了一个状态更新器。
 
 需要注意的是：
 - 函数 ensureCurrentInstance 是为了确保 useState 必须在 render 中执行，也就是限制了必须在函数式组件中执行。
-- 以 callIndex 生成的自增 id 作为存储状态值的 key。说明 useState 需要依赖第一次渲染时的调用顺序来匹配过去的 state（每次渲染 callIndex 需要重置为0）。这也限制了 useState 必须在顶层代码中使用。
+- 以 callIndex 生成的自增 id 作为存储状态值的 key。说明 useState 需要依赖第一次渲染时的调用顺序来匹配过去的 state（每次渲染 callIndex 都要重置为0）。这也限制了 useState 必须在顶层代码中使用。
 - 其它 hooks 也必须遵循以上两点。
 
 
 ### useEffect
 
-useEffect 用于添加组件状态更新后，需要执行一些副作用逻辑。
+useEffect 用于添加组件状态更新后，需要执行的副作用逻辑。
 
 **方法签名：**
 > void useEffect(rawEffect, deps)
@@ -223,7 +220,9 @@ const Foo = withHooks(h => {
 ```
 代码中，通过 useEffect 使每当 count 的状态值变化时，都会重置 document.title。
 
-注意：这里没有指定 useEffect 的第二个参数 deps，表示只要组件重新渲染都会执行 useEffect 指定的逻辑，不限制必须是 count 变化时。useEffect 详细的参数说明，请参考：[Using the Effect Hook](https://reactjs.org/docs/hooks-effect.html)
+注意：这里没有指定 useEffect 的第二个参数 deps，表示只要组件重新渲染都会执行 useEffect 指定的逻辑，不限制必须是 count 变化时。
+
+useEffect 详细的参数说明，请参考：[Using the Effect Hook](https://reactjs.org/docs/hooks-effect.html)
 
 **调用示例 2：**
 ```javascript
@@ -252,7 +251,7 @@ useEffect 第一个参数的返回值，如果是函数的话，则定义其为�
 
 这里在 useEffect 逻辑中，为 window 对象添加了 resize 事件，那么就需要在组件销毁时或需要重新执行该副作用逻辑时，先把 resize 事件注销掉，以避免不必要的事件处理。
 
-另外，需要注意，这里 useEffect 的第二个参数的值是 []，表明无依赖项，只在组件创建后执行一次，这样处理也符合这里的上下文场景。
+注意，这里 useEffect 的第二个参数的值是 []，表明无依赖项，副作用逻辑只在组件 mounted 时执行一次，这样处理也符合这里的上下文场景。
 
 
 **useEffect 实现细节:**
@@ -312,9 +311,7 @@ export function useEffect(rawEffect, deps) {
   }
 }
 ```
-可以看到 useEffect 的实现比较精巧，涉及到了组件的三个生命周期：mounted、updated、destroyed。
-
-副作用逻辑的执行细节由 deps 控制：
+可以看到，useEffect 的实现比较精巧，涉及到了组件的三个生命周期：mounted、updated、destroyed，副作用逻辑的执行细节由参数 deps 控制：
 - mounted 时，固定地执行一次。
 - 如果 deps 未指定，则每次 updated 后都执行一次。
 - 如果 deps 为空数组，则 updated 后不执行。
@@ -332,7 +329,7 @@ export function useEffect(rawEffect, deps) {
 
 ### useRef
 
-相当于为组件添加一个本地变量 -- 非状态。
+相当于为组件添加一个本地变量（非组件状态）。
 
 **方法签名：**
 > const refContainer = useRef(initialValue)
@@ -351,7 +348,23 @@ export function useRef(initial) {
     refs[id]
 }
 ```
-代码中，useRef 指定的初始值，连同组件本身的 refs 定义，被存储到了内部对象 \_refsStore 中。在组件的渲染函数中，随时可拿到 ref 对象：refContainer，并获取或修改其中的 current 属性。
+代码中，useRef 指定的初始值，连同组件本身的 refs 定义，被存储到了内部对象 \_refsStore 中。在组件的渲染函数中，随时可拿到 ref 对象：refContainer，获取或修改其中的 current 属性。
+
+### useData
+
+useData 与 useState 类似，不同的是，useData 不提供更新器。
+
+**useData 实现细节：**
+```javascript
+export function useData(initial) {
+  const id = ++callIndex
+  const state = currentInstance.$data._state
+  if (isMounting) {
+    currentInstance.$set(state, id, initial)
+  }
+  return state[id]
+}
+```
 
 ### useMounted
 
@@ -378,8 +391,7 @@ export function useDestroyed(fn) {
 ```
 上文中提到 useEffect 第一个参数的返回值，如果是函数的话，会在 destroyed 阶段作为清理逻辑执行。
 
-这里通过设置参数 deps 的值为空数组，并把 fn 指定为 useEffect 的副作用逻辑的返回值，使 fn 在 destroyed 阶段执行。
-
+这里，通过设置参数 deps 的值为空数组，并把 fn 指定为 useEffect 的副作用逻辑的返回值，避免了 fn 在组件更新时被执行，使 fn 仅在 destroyed 阶段执行。
 
 
 ### useUpdated
@@ -399,7 +411,7 @@ export function useUpdated(fn, deps) {
   }, deps)
 }
 ```
-也是通过 useEffect 实现，这里的副作用逻辑本身未指定，fn 定义在了清理逻辑的位置，每次组件更新都会执行。
+也是通过 useEffect 实现，通过 useRef 声明一个标志变量，避免 useEffect 的副作用逻辑在 mounted 中执行。
 
 
 ### useWatch
@@ -439,7 +451,7 @@ export function useComputed(getter) {
   return store[id]
 }
 ```
-本质上也是通过组件实例的 $watch 实现。
+这里把计算属性的值存储在了内部对象 \_computedStore 中。本质上，也是通过组件实例的 $watch 实现。
 
 
 ### 完整代码及示例
@@ -449,7 +461,11 @@ export function useComputed(getter) {
 
 ## 结论
 
+熟悉了 Hooks 出现的背景、Hooks 定义、以及在 React/Vue 中的实现后，基本上可以得出以下结论：
+
+- Hooks 如果广泛应用的话，将会大幅地改变了我们开发组件的方式。
+- 通过 Hooks，使我们能够切入组件生命周期的各个环节，为函数式的纯组件装配状态与行为。模块化粒度更细了，代码复用度高，也更高内聚松耦合了。
 - Hooks API 是个中立的概念，也可以在 Vue、或其它组件系统中使用，如：[React's Hooks API implemented for web components](https://github.com/matthewp/haunted)
-- 通过 Hooks 使我们能够切入组件生命周期的各个环节，为函数式的纯组件装配行为。模块化粒度更细了，代码复用度高，也更高内聚松耦合了。
 - 以「纯组件 + Hooks」的方式开发组件，我们基本上告别了捉摸不定的 this，代码更函数式了。未来也方便更进一步地使用函数式的柯里化、组合、惰性计算等诸多优势，编写更简洁健壮的代码。
 - 通过 Hooks，使我们能够根据业务逻辑的相关性组织代码模块，摆脱了类组件格式的限制。
+- Hooks 还处于早期阶段，但是给我们开发组件提供了一个很好的思路，大家可以在 react-16.7.0-alpha.0 中体验。

@@ -1,4 +1,4 @@
-# 关于Web前端埋点的总结
+# Web 前端埋点的总结
 
 ## 前端埋点的重要性
 这个不说了，作为大数据平台的采集环节，上报数据的准确性、全面性，其重要性不言而喻。
@@ -64,8 +64,8 @@
 由于h5嵌入在app webview内，此时h5的埋点参数应该使用app的埋点参数，如: device_id, spm, os(操作系统), lat/lng(app定位更准确)等.
 即需要app在调用h5时，将自身上下文参数传递过来，供后续h5上报埋点使用(不存在h5反向传参的需求).
 
-## 有两种方式
-### 通过url传递
+### 有两种方式
+#### 通过url传递
 即在url中通过query params传递，以query name的特殊前缀指明该参数是app传过来的埋点数据，如下所示:
 
 ```javascript
@@ -95,7 +95,7 @@ let mxticker = {
 }
 ```
 
-### h5调用app提供本地方法，主动获取。
+#### h5调用app提供本地方法，主动获取。
 ```javascript
 let mxticker = {
 	tick(data){
@@ -116,8 +116,7 @@ let mxticker = {
 ```
 
 
-
-# 如何确保上报数据的准确性
+## 如何确保上报数据的准确性
 准确地获取用户交互轨迹的上下文信息，并成功上报Server。
 对于前者只需编码正确，以及注意一下异步编程模式下的信息获取即可；
 对于后者，本质上这是个如何把握数据上报时机的问题，由于浏览器环境所限制，无法100%保证在一些交互环节都能成功上报，如页面退出时。
@@ -128,7 +127,7 @@ let mxticker = {
 可批量异步上报, 埋点请求不阻塞正常业务；
 
 
-# 更好的可维护性
+## 更好的可维护性
 主要是手动埋点，试想一下，如果埋点代码与其它逻辑耦合在一块的话，随着项目的功能迭代及代码重构，可能哪一天报表上的折线突然出现了一个深谷，然后排查了很长时间发现是不小心埋点上报逻辑误删了或未执行到 :(  
 
 并且这些问题测试同学也很难覆盖到.
@@ -137,5 +136,5 @@ let mxticker = {
 最后使埋点的添加 由配置文件驱动。
 
 
-# 参考文章
+## 参考文章
 [美团点评前端无痕埋点实践](https://mp.weixin.qq.com/s?__biz=MjM5NjQ5MTI5OA==&mid=2651746072&idx=1&sn=9d5d78ea4f9c0f2f6059591281dd0e3c&chksm=bd12b6558a653f437ae8304e534235d55c01aa2c9489e85d6193b52f5da00f66927f3ac77c2b&mpshare=1&scene=1&srcid=0302K0GvthEpOYZisYclAocJ&key=e82f935468864c7df086c2de55a4282c90551743a3a4c2040fd6fe81223e2ec8a2d2b23c3c4a137089cb50e0cf7518faa0dc4658c5d882471b33dd00ad8fc2347eba8ace3e9112d01775a3eaf59a6b20&ascene=0&uin=MTgzMjE5MDE4Mg%3D%3D&devicetype=iMac+MacBookPro11%2C2+OSX+OSX+10.12.3+build(16D32)&version=12020010&nettype=WIFI&fontScale=100&pass_ticket=XOm0ln8CGtJZiG6e0YJ9bju1rGikxYSGB0xxLAwZWsqvDuSuG7lXLHzeQ7aiD%2BDY)

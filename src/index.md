@@ -1,6 +1,5 @@
 ---
-home: true
-heroImage: /logo.jpg
-actionText: 看文章 →
-actionLink: /site/about.md
+home: false
 ---
+
+欢迎光临，请选择左侧栏中感兴趣的文章。
